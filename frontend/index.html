@@ -868,15 +868,26 @@
                     let tagsHtml = `<div class="resource-tags">`;
 
                     data.resources[index].resources.forEach(r => {
-                        if (r.type === "YouTube" && r.videos && r.videos.length > 0) {
-                            r.videos.forEach(video => {
+                        if (r.type === "YouTube") {
+                            if (r.videos && r.videos.length > 0) {
+                                r.videos.forEach(video => {
+                                    hasResources = true;
+                                    tagsHtml += `
+                                    <a class="tag youtube" target="_blank" href="https://youtube.com/watch?v=${video.videoId}">
+                                        📺 ${video.title}
+                                    </a>
+                                    `;
+                                });
+                            } else {
+                                // Fallback YouTube search link if API key is missing
                                 hasResources = true;
+                                const searchQuery = encodeURIComponent(`${phase.title} programming tutorial ${data.assessment.language || 'English'}`);
                                 tagsHtml += `
-                                <a class="tag youtube" target="_blank" href="https://youtube.com/watch?v=${video.videoId}">
-                                    📺 ${video.title}
+                                <a class="tag youtube" target="_blank" href="https://www.youtube.com/results?search_query=${searchQuery}">
+                                    📺 Search: ${phase.title}
                                 </a>
                                 `;
-                            });
+                            }
                         }
                     });
 
