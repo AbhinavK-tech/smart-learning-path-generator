@@ -1,50 +1,44 @@
-const express = require("express");
-const cors = require("cors");
+const LearningPathOrchestrator = require("../backend/agents/orchestrator");
 
-const LearningPathOrchestrator =
-    require("../backend/agents/orchestrator");
+module.exports = async (req, res) => {
+    // Allow only POST
+    if (req.method !== "POST") {
+        return res.status(405).json({
+            error: "Method not allowed"
+        });
+    }
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/", (req, res) => {
-    res.json({
-        status: "ok",
-        message: "Learning Path Generator API Running"
-    });
-});
-
-app.post("/generate", async (req, res) => {
     try {
         const {
             goal,
             level,
             commitment,
             language
-        } = req.body;
+        } = req.body || {};
 
-        const orchestrator =
-            new LearningPathOrchestrator();
+        // Validate input
+        if (!goal || !level || !commitment || !language) {
+            return res.status(400).json({
+                error: "Missing required fields"
+            });
+        }
 
-        const result =
-            await orchestrator.generate(
-                goal,
-                level,
-                commitment,
-                language
-            );
+        const orchestrator = new LearningPathOrchestrator();
+
+        const result = await orchestrator.generate(
+            goal,
+            level,
+            commitment,
+            language
+        );
 
         return res.status(200).json(result);
 
-    } catch (err) {
-        console.error("Generation Error:", err);
+    } catch (error) {
+        console.error("Backend Error:", error);
 
         return res.status(500).json({
-            error: err.message
+            error: error.message || "Internal server error"
         });
     }
-});
-
-module.exports = app;
+};
