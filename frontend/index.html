@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="storage.js"></script>
     
     <style>
         /* 5. COLOR PALETTE & VARIABLES */
@@ -673,7 +674,7 @@
                             <h2 id="res-title" style="font-size: 28px; margin-bottom: 8px;">Generated Learning Path</h2>
                             <p id="res-subtitle" style="color: var(--text-muted); font-size: 14px;">Custom curriculum formulated to map against requirements.</p>
                         </div>
-                        <button class="btn btn-secondary" onclick="alert('Path saved to your temporary profile catalog.')" style="white-space: nowrap;">
+                        <button class="btn btn-secondary" onclick="saveCurrentPath()" style="white-space: nowrap;">
                             <i data-lucide="bookmark"></i> Save Path
                         </button>
                     </div>
@@ -725,11 +726,17 @@
         </div>
 
         <div id="view-saved" class="hidden">
-            <section style="text-align: center; max-width: 500px; margin: 0 auto; padding: 40px 0;">
-                <i data-lucide="folder-heart" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
-                <h3>No Saved Paths Found</h3>
-                <p style="color: var(--text-muted); font-size: 14px; margin-top: 8px; margin-bottom: 24px;">Generated architectures that you choose to store will persistently display here for your future study tracking sessions.</p>
-                <button class="btn btn-primary" onclick="switchTab('generate')">Create Path Now</button>
+            <section style="max-width: 800px; margin: 0 auto; padding: 40px 0;">
+                <h2 style="font-size: 28px; margin-bottom: 24px;">Saved Learning Paths</h2>
+                <div id="saved-paths-list" class="features-grid" style="grid-template-columns: 1fr; gap: 20px; margin-bottom: 24px;">
+                    <!-- Saved path cards will be dynamically inserted here -->
+                </div>
+                <div id="saved-empty-state" style="text-align: center; max-width: 500px; margin: 0 auto;">
+                    <i data-lucide="folder-heart" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                    <h3>No Saved Paths Found</h3>
+                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 8px; margin-bottom: 24px;">Generated roadmaps that you choose to store will persistently display here for your future study tracking sessions.</p>
+                    <button class="btn btn-primary" onclick="switchTab('generate')">Create Path Now</button>
+                </div>
             </section>
         </div>
 
@@ -756,6 +763,9 @@
     </footer>
 
     <script>
+        // Global state for current displayed path data
+        let currentPathData = null;
+
         // Initialize Vector Graphics Assets Elements
         lucide.createIcons();
 
@@ -782,6 +792,11 @@
                     l.classList.add('active');
                 }
             });
+
+            // If switching to the saved tab, render the saved paths
+            if (viewId === 'saved') {
+                renderSavedPaths();
+            }
         }
 
         // Secondary Button action route helper
@@ -790,161 +805,188 @@
         }
 
         async function handleFormSubmit(e) {
+            e.preventDefault();
 
-        e.preventDefault();
+            const goal = document.getElementById("goal").value;
+            const level = document.getElementById("level").value;
+            const commitment = document.getElementById("commitment").value;
+            const language = document.getElementById("language").value;
 
-        const goal = document.getElementById("goal").value;
-        const level = document.getElementById("level").value;
-        const commitment = document.getElementById("commitment").value;
-        const language = document.getElementById("language").value;
-        
+            switchTab("loading");
 
-        switchTab("loading");
-
-        try {
-
-            const response = await fetch("/api/generate", {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    goal,
-                    level,
-                    commitment,
-                    language
-                })
-
-            });
-
-            const data = await response.json();
-
-            displayRoadmap(data);
-
-        } catch (err) {
-
-            alert("Backend Connection Failed");
-
-            console.log(err);
-
-            switchTab("generate");
-
-        }
-
-}
-        // Dynamic Mock Generator Trigger Handling Form submission pipeline simulation
-        
-        function displayRoadmap(data){
-
-            console.log(data);
-        document.getElementById("res-title").innerText =
-            data.assessment.goal;
-
-        document.getElementById("res-badge").innerText =
-            data.assessment.level;
-
-        document.getElementById("res-subtitle").innerText =
-            data.advice.recommendation;
-
-        const timeline =
-            document.querySelector(".timeline");
-
-        timeline.innerHTML = "";
-
-        data.roadmap.phases.forEach((phase,index)=>{
-
-            let html = `
-
-            <div class="timeline-item">
-
-                <div class="timeline-dot"></div>
-
-                <div class="timeline-content">
-
-                    <h4>
-                    Phase ${phase.phase} :
-                    ${phase.title}
-                    </h4>
-
-                    <p>
-                    Duration :
-                    ${phase.duration}
-                    </p>
-
-                    <p>
-                    <b>Topics</b><br>
-                    ${phase.topics.join(", ")}
-                    </p>
-
-                    <p>
-                    <b>Skills</b><br>
-                    ${phase.skills.join(", ")}
-                    </p>
-
-                    <p>
-                    <b>Project</b><br>
-
-                    <strong>${phase.project.name}</strong>
-
-                    <br>
-
-                    ${phase.project.description}
-
-                </p>
-            `;
-
-            if(data.resources[index]){
-
-                html += `<div class="resource-tags">`;
-
-                data.resources[index].resources.forEach(r=>{
-
-                    if(r.type==="YouTube"){
-
-                        r.videos.forEach(video=>{
-
-                            html += `
-
-                            <a class="tag youtube"
-
-                            target="_blank"
-
-                            href="https://youtube.com/watch?v=${video.videoId}">
-
-                            📺 ${video.title}
-
-                            </a>
-
-                            `;
-
-                        });
-
-                    }
-
+            try {
+                const response = await fetch("/api/generate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        goal,
+                        level,
+                        commitment,
+                        language
+                    })
                 });
 
-                html += `</div>`;
+                if (!response.ok) {
+                    throw new Error("HTTP error " + response.status);
+                }
 
+                const data = await response.json();
+                currentPathData = data;
+                displayRoadmap(data);
+            } catch (err) {
+                alert("Backend Connection Failed. Using static generation mock or retrying later.");
+                console.log(err);
+                switchTab("generate");
             }
+        }
 
-            html += `
+        function displayRoadmap(data) {
+            console.log(data);
+            document.getElementById("res-title").innerText = data.assessment.goal;
+            document.getElementById("res-badge").innerText = data.assessment.level;
+            document.getElementById("res-subtitle").innerText = data.advice.recommendation;
 
+            const timeline = document.querySelector(".timeline");
+            timeline.innerHTML = "";
+
+            data.roadmap.phases.forEach((phase, index) => {
+                let html = `
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <h4>Phase ${phase.phase}: ${phase.title}</h4>
+                        <p><b>Duration:</b> ${phase.duration}</p>
+                        <p><b>Topics:</b> ${phase.topics.join(", ")}</p>
+                        <p><b>Skills:</b> ${phase.skills.join(", ")}</p>
+                        <p><b>Project:</b> <strong>${phase.project.name}</strong> - ${phase.project.description}</p>
+                `;
+
+                if (data.resources[index]) {
+                    let hasResources = false;
+                    let tagsHtml = `<div class="resource-tags">`;
+
+                    data.resources[index].resources.forEach(r => {
+                        if (r.type === "YouTube" && r.videos && r.videos.length > 0) {
+                            r.videos.forEach(video => {
+                                hasResources = true;
+                                tagsHtml += `
+                                <a class="tag youtube" target="_blank" href="https://youtube.com/watch?v=${video.videoId}">
+                                    📺 ${video.title}
+                                </a>
+                                `;
+                            });
+                        }
+                    });
+
+                    // Add generic documentation / practice search tags as well if available
+                    data.resources[index].resources.forEach(r => {
+                        if (r.type === "Documentation") {
+                            hasResources = true;
+                            tagsHtml += `
+                            <a class="tag doc" target="_blank" href="https://www.google.com/search?q=${encodeURIComponent(r.query)}">
+                                📄 Docs Search
+                            </a>
+                            `;
+                        } else if (r.type === "Practice") {
+                            hasResources = true;
+                            tagsHtml += `
+                            <a class="tag doc" target="_blank" href="https://www.google.com/search?q=${encodeURIComponent(r.query)}">
+                                💻 Exercises
+                            </a>
+                            `;
+                        }
+                    });
+
+                    tagsHtml += `</div>`;
+                    if (hasResources) {
+                        html += tagsHtml;
+                    }
+                }
+
+                html += `
+                    </div>
                 </div>
+                `;
+                timeline.innerHTML += html;
+            });
 
-            </div>
+            switchTab("results");
+        }
 
-            `;
+        // Saved Paths management integration
+        function saveCurrentPath() {
+            if (!currentPathData) {
+                alert("No path has been generated yet to save!");
+                return;
+            }
+            saveLearningPath(currentPathData);
+            alert("Learning path has been successfully saved to your profile catalog!");
+        }
 
-            timeline.innerHTML += html;
+        function renderSavedPaths() {
+            const paths = getLearningPaths();
+            const listEl = document.getElementById("saved-paths-list");
+            const emptyEl = document.getElementById("saved-empty-state");
 
-        });
+            if (paths.length === 0) {
+                listEl.classList.add("hidden");
+                emptyEl.classList.remove("hidden");
+            } else {
+                listEl.classList.remove("hidden");
+                emptyEl.classList.add("hidden");
 
-        switchTab("results");
+                listEl.innerHTML = "";
+                paths.forEach((path, index) => {
+                    const card = document.createElement("div");
+                    card.className = "feature-card";
+                    card.style.display = "flex";
+                    card.style.flexDirection = "column";
+                    card.style.gap = "12px";
+                    card.style.border = "1px solid var(--border-color)";
+                    card.style.textAlign = "left";
+                    
+                    card.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; width: 100%;">
+                            <div style="flex-grow: 1;">
+                                <span class="badge" style="margin-bottom: 8px;">${path.assessment.level}</span>
+                                <h3 style="font-size: 18px; margin-bottom: 4px; color: #fff;">${path.assessment.goal}</h3>
+                                <p style="color: var(--text-muted); font-size: 13px;">
+                                    Commitment: ${path.assessment.commitment} | Saved: ${path.savedAt || "N/A"}
+                                </p>
+                            </div>
+                            <button class="btn btn-secondary" onclick="deleteSavedPath(${index})" style="padding: 8px; border-radius: 8px; flex-shrink: 0;">
+                                <i data-lucide="trash-2" style="width: 16px; height: 16px; margin: 0; color: #ef4444;"></i>
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
+                            <button class="btn btn-primary" onclick="viewSavedPath(${index})" style="padding: 8px 16px; font-size: 13px; border-radius: 8px;">
+                                <i data-lucide="eye" style="width: 14px; height: 14px;"></i> View Roadmap
+                            </button>
+                        </div>
+                    `;
+                    listEl.appendChild(card);
+                });
+                lucide.createIcons();
+            }
+        }
 
-    }
+        function deleteSavedPath(index) {
+            if (confirm("Are you sure you want to delete this saved learning path?")) {
+                deleteLearningPath(index);
+                renderSavedPaths();
+            }
+        }
+
+        function viewSavedPath(index) {
+            const paths = getLearningPaths();
+            const path = paths[index];
+            if (path) {
+                currentPathData = path;
+                displayRoadmap(path);
+            }
+        }
     </script>
 </body>
 </html>

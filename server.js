@@ -10,10 +10,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-
-app.get('/', (req, res) => {
-    res.send('Learning Path Generator API Running');
-});
+app.use(express.static('frontend'));
 
 app.post('/generate', async (req, res) => {
 
