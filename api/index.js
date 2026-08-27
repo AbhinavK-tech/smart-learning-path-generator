@@ -36,12 +36,12 @@ app.post("/generate", async (req, res) => {
                 language
             );
 
-        res.json(result);
+        return res.status(200).json(result);
 
     } catch (err) {
-        console.error(err);
+        console.error("Generation Error:", err);
 
-        res.status(500).json({
+        return res.status(500).json({
             error: err.message
         });
     }
